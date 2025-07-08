@@ -1,16 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Animated, Image, StyleSheet, StatusBar, Text, ScrollView } from 'react-native';
-import { Link } from 'expo-router'; // Import Link from expo-router
+import { View, Animated, Image, StyleSheet, StatusBar, Text, ScrollView, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import { Link, useRouter } from 'expo-router'; // Import Link and useRouter from expo-router
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// Calculate responsive dimensions
+const isSmallDevice = screenWidth < 375;
+const isMediumDevice = screenWidth >= 375 && screenWidth < 414;
+const isLargeDevice = screenWidth >= 414;
 
 export default function Index() {
   const [currentIndex, setCurrentIndex] = useState(0); // Tracks the current image index
   const opacity = useRef(new Animated.Value(0)).current; // Initial opacity for fade-in effect
+  const router = useRouter(); // Initialize router for navigation
 
   // Array of images to be shown in slideshow
   const images = [
-    require('../../assets/images/sample.jpeg'),
-    require('../../assets/images/sample1.jpg'),
-    require('../../assets/images/sample2.jpeg'),
+    require('../../assets/images/index1.jpg'),
+    require('../../assets/images/index2.jpg'),
+    require('../../assets/images/index3.jpg'),
   ];
 
   // Function to loop through images
@@ -46,49 +54,73 @@ export default function Index() {
     return () => clearInterval(interval);
   }, []);
 
+  // Handle image click
+  const handleImagePress = () => {
+    router.push('/App');
+  };
+
+  // Calculate responsive image dimensions
+  const getImageHeight = () => {
+    if (isSmallDevice) {
+      return screenHeight * 0.55; // 55% for small devices
+    } else if (isMediumDevice) {
+      return screenHeight * 0.6; // 60% for medium devices
+    } else {
+      return screenHeight * 0.65; // 65% for large devices
+    }
+  };
+
+  const getImageWidth = () => {
+    if (isSmallDevice) {
+      return screenWidth - 30; // Less padding on small devices
+    } else {
+      return screenWidth - 40; // Standard padding
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
       {/* ScrollView around the content that needs to be scrollable */}
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Navigation links at the top */}
-        <View style={styles.navButtons}>
-          <View style={styles.navButton}>
-            <Link href="/HomeScreen">
-              <Text style={styles.navButtonText}>Go to HomeScreen</Text>
-            </Link>
-          </View>
-          <View style={styles.navButton}>
-            <Link href="/StationHomeScreen">
-              <Text style={styles.navButtonText}>Go to StationHomeScreen</Text>
-            </Link>
-          </View>
-          <View style={styles.navButton}>
-            <Link href="/Printoutspage">
-              <Text style={styles.navButtonText}>Go to PrintHomeScreen</Text>
-            </Link>
-          </View>
-          <View style={styles.navButton}>
-            <Link href="/MainScreen">
-              <Text style={styles.navButtonText}>Go to Addrestaruant</Text>
-            </Link>
-          </View>
-          <View style={styles.navButton}>
-            <Link href="/EmailVerification">
-              <Text style={styles.navButtonText}>sign up email</Text>
-            </Link>
-          </View>
-        </View>
+       
 
         {/* Zapp logo at the top */}
-        <Image source={require('../../assets/images/zapp.jpeg')} style={styles.logo} />
+        <Image source={require('../../assets/images/zappq.jpeg')} style={styles.logo} />
 
-        {/* Slideshow images with fade-in/out animation */}
-        <Animated.Image
-          source={images[currentIndex]} // Dynamically change the image based on currentIndex
-          style={[styles.mainImage, { opacity }]} // Apply the fade effect to each image
-        />
+        {/* Slideshow images with fade-in/out animation - now clickable */}
+        <TouchableOpacity 
+          activeOpacity={0.9} 
+          onPress={handleImagePress} 
+          style={[
+            styles.imageContainer,
+            {
+              width: getImageWidth(),
+              height: getImageHeight(),
+            }
+          ]}
+        >
+          <Animated.Image
+            source={images[currentIndex]} // Dynamically change the image based on currentIndex
+            style={[styles.mainImage, { opacity }]} // Apply the fade effect to each image
+          />
+          
+          {/* Subtle overlay gradient for modern look */}
+          <Animated.View style={[styles.imageOverlay, { opacity }]} />
+          
+          {/* Click hint text */}
+          <Animated.View style={[styles.clickHintContainer, { opacity }]}>
+            <Text style={styles.clickHintText}>Tap to explore</Text>
+          </Animated.View>
+        </TouchableOpacity>
+
+        {/* Add some bottom spacing for better scrolling experience */}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -102,41 +134,74 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     alignItems: 'center',
-    paddingBottom: 20, // Optional: Add padding at the bottom if needed
+    paddingBottom: 20,
+    flexGrow: 1,
   },
   logo: {
-    width: 150,
-    height: 150,
+    width: isSmallDevice ? 120 : 150,
+    height: isSmallDevice ? 120 : 150,
     resizeMode: 'contain',
-    marginTop: 50, // Adjusted margin to make room for navigation links
+    marginTop: isSmallDevice ? 15 : 20,
+    marginBottom: isSmallDevice ? 15 : 20,
+  },
+  imageContainer: {
+    marginTop: 10,
+    borderRadius: isSmallDevice ? 20 : 30,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 20, // For Android shadow
   },
   mainImage: {
     width: '100%',
-    height: 300, // Set height explicitly so the image doesn't stretch too much
+    height: '100%',
     resizeMode: 'cover',
-    borderTopLeftRadius: 50,
-    borderTopRightRadius: 50,
-    marginTop: 20,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '40%', // Increased overlay area
+    backgroundColor: 'transparent',
+    // Create gradient effect using multiple views (React Native doesn't support CSS gradients directly)
+  },
+  clickHintContainer: {
+    position: 'absolute',
+    bottom: isSmallDevice ? 15 : 20,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: isSmallDevice ? 15 : 20,
+    paddingVertical: isSmallDevice ? 8 : 10,
+    borderRadius: 20,
+  },
+  clickHintText: {
+    color: '#333',
+    fontSize: isSmallDevice ? 14 : 16,
+    fontWeight: '600',
   },
   navButtons: {
-    width: '80%',
+    width: isSmallDevice ? '90%' : '80%',
     alignItems: 'center',
-    backgroundColor: 'transparent', // Ensure the buttons aren't being hidden
-    marginTop: 20, // Space between the navigation and logo/image
+    backgroundColor: 'transparent',
+    marginTop: isSmallDevice ? 15 : 20,
   },
   navButton: {
-    backgroundColor: '#ff6347', // Tomato color for the button
-    padding: 15,
+    backgroundColor: '#ff6347',
+    padding: isSmallDevice ? 12 : 15,
     marginBottom: 10,
     borderRadius: 10,
     width: '100%',
     alignItems: 'center',
-    borderWidth: 1, // Debugging: Add a border to see if the button is rendering
-    borderColor: '#fff', // Border color to make it visible
   },
   navButtonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: isSmallDevice ? 16 : 18,
     fontWeight: 'bold',
   },
 });

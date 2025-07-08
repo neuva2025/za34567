@@ -55,8 +55,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  const removeFromCart = useCallback((id: number) => {
-    setCartItems(prevItems => prevItems.filter(item => item.id !== id));
+  // Fixed: Wrapped removeFromCart in useCallback
+  const removeFromCart = useCallback((itemId: number) => {
+    console.log('Removing item with ID:', itemId); // Debug log
+    setCartItems(prev => {
+      const filteredItems = prev.filter(item => item.id !== itemId);
+      console.log('Items before removal:', prev.length); // Debug log
+      console.log('Items after removal:', filteredItems.length); // Debug log
+      return filteredItems;
+    });
   }, []);
 
   const clearCart = useCallback(() => {

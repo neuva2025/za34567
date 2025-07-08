@@ -1,66 +1,227 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Dimensions, Animated, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-interface MenuItem {
-  title: string;
-  icon: string;
+// Simple Z Button Component
+interface ZButtonProps {
   onPress: () => void;
 }
 
+const ZButton: React.FC<ZButtonProps> = ({ onPress }) => {
+  const scaleAnimation = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnimation, {
+      toValue: 0.9,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnimation, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Animated.View
+      style={[
+        styles.iconButton,
+        {
+          transform: [{ scale: scaleAnimation }],
+        },
+      ]}
+    >
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={0.7}
+      >
+        <View style={styles.iconWrapper}>
+          <Text style={styles.zText}>Z</Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
 interface FloatingMenuProps {
-  onProfilePress: () => void;
-  onLocationPress: () => void;
+  onProfilePress?: () => void;
+  visible?: boolean;
 }
 
-const FloatingMenu: React.FC<FloatingMenuProps> = ({ onProfilePress, onLocationPress }) => {
+const FloatingMenu: React.FC<FloatingMenuProps> = ({ 
+  onProfilePress,
+  visible = true
+}) => {
   const router = useRouter();
   const { width } = Dimensions.get('window');
+  const scaleAnimation = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const fadeAnimation = useRef(new Animated.Value(visible ? 1 : 0)).current;
 
-  const menuItems: MenuItem[] = [
-    {
-      title: 'Home',
-      icon: 'home',
-      onPress: () => router.push('/HomeScreen'),
-    },
-    {
-      title: 'Profile',
-      icon: 'person',
-      onPress: onProfilePress,
-    },
-    {
-      title: 'Location',
-      icon: 'location',
-      onPress: onLocationPress,
-    },
-    {
-      title: 'Orders',
-      icon: 'receipt',
-      onPress: () => router.push('/Ordersummarycard'),
-    },
-    {
-      title: 'Settings',
-      icon: 'settings',
-      onPress: () => router.push('/App'),
-    },
-  ];
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scaleAnimation, {
+          toValue: 1,
+          tension: 20,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnimation, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.spring(scaleAnimation, {
+          toValue: 0,
+          tension: 20,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnimation, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
+  const handleZButtonPress = () => {
+    router.push('/OrderDashboard');
+  };
+
+  const handleHomePress = () => {
+    router.push('/HomeScreen');
+  };
+
+  const handleProfilePress = () => {
+    if (onProfilePress) {
+      onProfilePress();
+    } else {
+      router.push('/ProfilePage');
+    }
+  };
+
+  const renderHomeIcon = () => {
+    const itemScale = useRef(new Animated.Value(1)).current;
+
+    const handlePressIn = () => {
+      Animated.spring(itemScale, {
+        toValue: 0.9,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handlePressOut = () => {
+      Animated.spring(itemScale, {
+        toValue: 1,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    return (
+      <Animated.View
+        style={[
+          styles.iconButton,
+          {
+            transform: [
+              { scale: scaleAnimation },
+              { scale: itemScale },
+            ],
+            opacity: fadeAnimation,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={handleHomePress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={0.7}
+        >
+          <View style={styles.iconWrapper}>
+            <Ionicons name="home" size={24} color="#fff" />
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  const renderProfileIcon = () => {
+    const itemScale = useRef(new Animated.Value(1)).current;
+
+    const handlePressIn = () => {
+      Animated.spring(itemScale, {
+        toValue: 0.9,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const handlePressOut = () => {
+      Animated.spring(itemScale, {
+        toValue: 1,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    return (
+      <Animated.View
+        style={[
+          styles.iconButton,
+          {
+            transform: [
+              { scale: scaleAnimation },
+              { scale: itemScale },
+            ],
+            opacity: fadeAnimation,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={handleProfilePress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={0.7}
+        >
+          <View style={styles.iconWrapper}>
+            <Ionicons name="person" size={24} color="#fff" />
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  if (!visible) {
+    return null;
+  }
 
   return (
     <View style={[styles.container, { width: width - 32 }]}>
       <View style={styles.dockContainer}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={item.title}
-            style={styles.iconButton}
-            onPress={item.onPress}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconWrapper}>
-              <Ionicons name={item.icon as any} size={24} color="#fff" />
-            </View>
-          </TouchableOpacity>
-        ))}
+        <Animated.View
+          style={{
+            transform: [{ scale: scaleAnimation }],
+            opacity: fadeAnimation,
+          }}
+        >
+          <ZButton onPress={handleZButtonPress} />
+        </Animated.View>
+        
+        {renderHomeIcon()}
+        {renderProfileIcon()}
       </View>
     </View>
   );
@@ -79,8 +240,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     borderRadius: 32,
     padding: 8,
-    gap: 8,
-    justifyContent: 'space-around',
+    gap: 16,
+    justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
@@ -90,7 +251,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-    backdropFilter: 'blur(10px)',
   },
   iconButton: {
     padding: 8,
@@ -102,6 +262,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  zText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    fontStyle: 'italic',
   },
 });
 

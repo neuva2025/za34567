@@ -26,25 +26,25 @@ const BiryaniCard: React.FC<{
 }> = ({ item, onAddToCart }) => {
   return (
     <View style={styles.card}>
-      {/* Image */}
+  
       <Image source={{ uri: item.image }} style={styles.image} />
-      {/* Text Content */}
+
       <View style={styles.textContainer}>
-        {/* Title */}
+      
         <Text style={styles.subtitle}>{item.subtitle}</Text>
         <Text style={styles.title}>{item.title}</Text>
-        {/* Description */}
+  
         <Text style={styles.description}>{item.description}</Text>
-        {/* Rating, Price, and Add Button */}
+      
         <View style={styles.footer}>
-          {/* Rating */}
+      
           <View style={styles.rating}>
             <FontAwesome name="star" size={18} color="#f0c02f" />
             <Text style={styles.ratingText}>{item.rating}</Text>
           </View>
-          {/* Price */}
+        
           <Text style={styles.price}>{`₹${item.price} /-`}</Text>
-          {/* Add to Cart Button */}
+         
           <TouchableOpacity
             style={styles.addButton}
             onPress={() => onAddToCart(item)}

@@ -14,7 +14,7 @@ import { FontAwesome } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCart } from "@/components/CartProvider";
 import { useAuth } from '@/components/AuthContext';
-import RecommendPage from "@/components/RecommendPage";
+import { Ionicons } from '@expo/vector-icons';
 import { 
   doc, 
   getDoc, 
@@ -93,10 +93,10 @@ const LocationPopup: React.FC<LocationPopupProps> = ({ visible, onClose, onLocat
   );
 };
 
-const OrderSummaryCard: React.FC = () => {
+const OrderSummarycard: React.FC = () => {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const { cartItems: orderItems, updateQuantity, clearCart } = useCart();
+  const { cartItems: orderItems, updateQuantity, removeFromCart, clearCart } = useCart();
   const { user, isAuthenticated, login, userLocation, setUserLocation } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -106,8 +106,6 @@ const OrderSummaryCard: React.FC = () => {
 
   const restaurantId = params.restaurantId as string;
   const restaurantName = params.name as string;
-
-
 
   const updateExistingOrder = async (orderId: string, orderData: Partial<OrderData>) => {
     try {
@@ -148,26 +146,40 @@ const OrderSummaryCard: React.FC = () => {
     }
   };
 
-  
+  // Handle item deletion with confirmation
+  const handleDeleteItem = (itemId: number, itemTitle: string) => {
+    Alert.alert(
+      "Remove Item",
+      `Are you sure you want to remove "${itemTitle}" from your cart?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => {
+            removeFromCart(itemId);
+            // Show success message
+            Alert.alert("Item Removed", `${itemTitle} has been removed from your cart.`);
+          }
+        }
+      ]
+    );
+  };
 
-  const incrementQuantity = (id: number) => {
-  const item = orderItems.find((item) => item.id === id);
-  if (item) {
-    // Using the actual quantity instead of id
-    const newQuantity = item.quantity + 1;
-    updateQuantity(id, newQuantity); // Updates the quantity state in CartProvider
-  }
-};
-
-const decrementQuantity = (id: number) => {
-  const item = orderItems.find((item) => item.id === id);
-  if (item && item.quantity > 1) {
-    // Using the actual quantity instead of id
-    const newQuantity = item.quantity - 1;
-    updateQuantity(id, newQuantity); // Updates the quantity state in CartProvider
-  }
-};
-  
+  // Handle quantity updates
+  const handleQuantityChange = (itemId: number, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      const item = orderItems.find(item => item.id === itemId);
+      if (item) {
+        handleDeleteItem(itemId, item.title);
+      }
+    } else {
+      updateQuantity(itemId, newQuantity);
+    }
+  };
 
   const totalPrice = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryCharge = totalPrice * 0.1;
@@ -211,8 +223,8 @@ const decrementQuantity = (id: number) => {
         orderDate: serverTimestamp(),
         total: finalAmount,
         userId: user.uid,
-        restaurantId: restaurantId,  // Add restaurantId
-        restaurantName: restaurantName  // Use restaurantName from params
+        restaurantId: restaurantId,
+        restaurantName: restaurantName
       };
 
       try {
@@ -238,6 +250,7 @@ const decrementQuantity = (id: number) => {
       setIsUpdating(false);
     }
   };
+  
   const handleBack = () => {
     const from = params.from as string;
     if (from === "MenuList") {
@@ -247,25 +260,39 @@ const decrementQuantity = (id: number) => {
     }
   };
 
-  
   if (orderItems.length === 0) {
     return (
       <View style={styles.container}>
-        <Text style={styles.header}>Your Cart is Empty</Text>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Text style={styles.backButtonText}>Back to Menu</Text>
-        </TouchableOpacity>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={handleBack}
+          >
+            <FontAwesome name="arrow-left" size={24} color="#333" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.emptyContentContainer}>
+          <Text style={styles.emptyHeader}>Your Cart is Empty</Text>
+          <Text style={styles.emptySubtext}>Add some delicious items to get started!</Text>
+          <TouchableOpacity 
+            style={styles.browseButton} 
+            onPress={handleBack}
+          >
+            <Text style={styles.browseButtonText}>Browse Menu</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-        <FontAwesome name="arrow-left" size={24} color="#fff" />
-      </TouchableOpacity>
-
-      <Text style={styles.header}>Your Cart</Text>
+      <View style={styles.headerContainer}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <FontAwesome name="arrow-left" size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.header}>Your Cart</Text>
+      </View>
       
       <ScrollView style={styles.scrollView}>
         {!isAuthenticated ? (
@@ -292,48 +319,50 @@ const decrementQuantity = (id: number) => {
           </View>
         ) : (
           <>
-            {orderItems.map((item,index) => (
-  <View key={item.id} style={styles.card}>
-    <Image source={{ uri: item.image }} style={styles.image} />
-    <View style={styles.detailsContainer}>
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.weight}>{item.weight}</Text>
-      <Text style={styles.description} numberOfLines={2}>
-        {item.description}
-      </Text>
-      <View style={styles.footer}>
-        <View style={styles.ratingContainer}>
-          <FontAwesome name="star" size={16} color="#f0c02f" />
-          <Text style={styles.rating}>{item.rating}</Text>
-        </View>
-        <View style={styles.quantityContainer}>
-          <TouchableOpacity 
-            style={styles.quantityButton} 
-            onPress={() => {
-              if (item.quantity > 1) {
-                updateQuantity(item.id, item.quantity - 1);
-              }
-            }}
-          >
-            <Text style={styles.quantityButtonText}>-</Text>
-          </TouchableOpacity>
-          <Text style={styles.quantity}>{item.quantity}</Text>
-          <TouchableOpacity 
-            style={styles.quantityButton} 
-            onPress={() => {
-              updateQuantity(item.id, item.quantity + 1);
-            }}
-          >
-            <Text style={styles.quantityButtonText}>+</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.price}>
-          ₹{(item.price * item.quantity).toFixed(2)}
-        </Text>
-      </View>
-    </View>
-  </View>
-))}
+            {orderItems.map((item, index) => (
+              <View key={item.id} style={styles.card}>
+                <Image source={{ uri: item.image }} style={styles.image} />
+                <View style={styles.detailsContainer}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.title}>{item.title}</Text>
+                    <TouchableOpacity 
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteItem(item.id, item.title)}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#ff4757" />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.weight}>{item.weight}</Text>
+                  <Text style={styles.description} numberOfLines={2}>
+                    {item.description}
+                  </Text>
+                  <View style={styles.footer}>
+                    <View style={styles.ratingContainer}>
+                      <FontAwesome name="star" size={16} color="#f0c02f" />
+                      <Text style={styles.rating}>{item.rating}</Text>
+                    </View>
+                    <View style={styles.quantityContainer}>
+                      <TouchableOpacity 
+                        style={styles.quantityButton}
+                        onPress={() => handleQuantityChange(item.id, item.quantity - 1)}
+                      >
+                        <Ionicons name="remove" size={16} color="#333" />
+                      </TouchableOpacity>
+                      <Text style={styles.quantity}>{item.quantity}</Text>
+                      <TouchableOpacity 
+                        style={styles.quantityButton}
+                        onPress={() => handleQuantityChange(item.id, item.quantity + 1)}
+                      >
+                        <Ionicons name="add" size={16} color="#333" />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.price}>
+                      ₹{(item.price * item.quantity).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
           </>
         )}
 
@@ -347,8 +376,6 @@ const decrementQuantity = (id: number) => {
           }}
         />
 
-        <RecommendPage />
-
         <View style={styles.summaryContainer}>
           <Text style={styles.summaryText}>
             Food Cost: ₹{totalPrice.toFixed(2)}
@@ -361,7 +388,7 @@ const decrementQuantity = (id: number) => {
           </Text>
         </View>
 
-        {isAuthenticated && (
+        {Boolean(isAuthenticated) && (
           <TouchableOpacity
             style={[styles.payButton, isUpdating && styles.payButtonDisabled]}
             onPress={handlePay}
@@ -380,29 +407,80 @@ const decrementQuantity = (id: number) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "#f5f5f5",
     padding: 10,
+  },
+  emptyContentContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
   scrollView: {
     flex: 1,
   },
-  header: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 10,
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 40,
+    marginBottom: 10,
+    position: 'relative',
+  },
+  emptyHeader: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: "#666",
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  emptySubtext: {
+    fontSize: 16,
+    color: "#999",
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  browseButton: {
+    backgroundColor: '#f0c02f',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+  },
+  browseButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  header: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: 'center',
   },
   backButton: {
     position: 'absolute',
-    top: 40,
-    left: 10,
+    top: 0,
+    left: 0,
     zIndex: 1,
-    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
   },
   backButtonText: {
-    color: "#fff",
-    fontSize: 16,
+    color: "#000",
+    fontSize: 40,
+    fontWeight: 'bold',
   },
   card: {
     flexDirection: "row",
@@ -410,6 +488,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 10,
     padding: 10,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   image: {
     width: 80,
@@ -424,10 +504,22 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   title: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
+    flex: 1,
+  },
+  deleteButton: {
+    padding: 5,
+    backgroundColor: '#ffecec',
+    borderRadius: 15,
+    marginLeft: 10,
   },
   weight: {
     fontSize: 12,
@@ -455,19 +547,34 @@ const styles = StyleSheet.create({
   quantityContainer: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: '#f8f9fa',
+    borderRadius: 15,
+    paddingHorizontal: 5,
   },
   quantityButton: {
-    backgroundColor: "#f0c02f",
-    padding: 5,
-    borderRadius: 4,
-  },
-  quantityButtonText: {
-    fontSize: 18,
-    color: "#fff",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   quantity: {
-    fontSize: 16,
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "600",
     marginHorizontal: 10,
+    minWidth: 20,
+    textAlign: 'center',
   },
   price: {
     fontSize: 16,
@@ -481,14 +588,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 20,
     paddingVertical: 15,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   summaryText: {
     fontSize: 16,
     color: "#333",
+    marginBottom: 5,
   },
   totalText: {
     fontWeight: "bold",
     fontSize: 18,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
   payButton: {
     backgroundColor: "#f0c02f",
@@ -500,19 +614,24 @@ const styles = StyleSheet.create({
   payButtonText: {
     fontSize: 18,
     color: "#fff",
+    fontWeight: "bold",
   },
   authContainer: {
     marginTop: 20,
     backgroundColor: "#fff",
     padding: 20,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   input: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#f9f9f9",
     marginBottom: 10,
     padding: 10,
     borderRadius: 6,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   error: {
     color: "red",
@@ -570,7 +689,8 @@ const styles = StyleSheet.create({
   buttonTextLocation: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
-export default OrderSummaryCard;
+export default OrderSummarycard;

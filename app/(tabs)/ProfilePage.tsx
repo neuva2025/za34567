@@ -1,216 +1,436 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { Link, useRouter } from 'expo-router'; // Import Link and useRouter for navigation
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { Link, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/components/AuthContext'; // Adjust the import path
+import { db } from '../../firebase/Config'; // Adjust the import path
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+
+interface UserProfile {
+  uid: string;
+  email: string;
+  createdAt: any;
+  displayName?: string;
+  phone?: string;
+  address?: string;
+  profileImage?: string;
+}
 
 const ProfilePage = () => {
-  const [profileImage, setProfileImage] = useState(null);
-  const router = useRouter(); // Hook for navigation
+  const router = useRouter();
+  const { user, isAuthenticated, logout, userLocation } = useAuth();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [orderCount, setOrderCount] = useState(0);
 
-  // Function to handle image upload
-  const handleImageUpload = async () => {
-    let permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (permissionResult.granted === false) {
-      alert("Permission to access camera roll is required!");
-      return;
+  useEffect(() => {
+    if (user && isAuthenticated) {
+      fetchUserProfile();
+      fetchUserOrders();
+    } else {
+      setLoading(false);
     }
+  }, [user, isAuthenticated]);
 
-    let pickerResult = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+  const fetchUserProfile = async () => {
+    try {
+      const usersRef = collection(db, 'USERS');
+      const q = query(usersRef, where('uid', '==', user?.uid));
+      const querySnapshot = await getDocs(q);
 
-    if (!pickerResult.canceled) {
-      setProfileImage(pickerResult.assets[0].uri);
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data() as UserProfile;
+        setUserProfile(userData);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      Alert.alert('Error', 'Failed to load user profile');
+    } finally {
+      setLoading(false);
     }
   };
+
+  const fetchUserOrders = async () => {
+    try {
+      const ordersRef = collection(db, 'orders');
+      const q = query(ordersRef, where('userId', '==', user?.uid));
+      const querySnapshot = await getDocs(q);
+      setOrderCount(querySnapshot.size);
+    } catch (error) {
+      console.error('Error fetching user orders:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.push('/'); // Adjust route as needed
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Profile</Text>
+          <TouchableOpacity onPress={() => router.push('/HomeScreen')}>
+            <Text style={styles.close}>×</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.unauthenticatedContainer}>
+          <Ionicons name="person-circle-outline" size={100} color="#ccc" />
+          <Text style={styles.unauthenticatedText}>Please login to view your profile</Text>
+          <TouchableOpacity 
+            style={styles.loginButton} 
+            onPress={() => router.push('/App')}
+          >
+            <Text style={styles.loginButtonText}>Login</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Profile</Text>
+          <TouchableOpacity onPress={() => router.push('/HomeScreen')}>
+            <Text style={styles.close}>×</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#000" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
-        <Text style={styles.title}>PROFILE</Text>
+        <Text style={styles.title}>Profile</Text>
         <TouchableOpacity onPress={() => router.push('/HomeScreen')}>
-          {/* Navigates back to HomeScreen */}
           <Text style={styles.close}>×</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Profile Info with Upload Button */}
-      <View style={styles.profileInfo}>
-        <TouchableOpacity style={styles.profilePicContainer} onPress={handleImageUpload}>
-          <Image
-            source={{ uri: profileImage || 'https://placeimg.com/150/150/people' }}
-            style={styles.profilePic}
-          />
-          <View style={styles.uploadOverlay}>
-            <Text style={styles.uploadText}>Upload Image</Text>
+      <ScrollView style={styles.scrollContainer}>
+        {/* User Info Section */}
+        <View style={styles.userInfoSection}>
+          <View style={styles.profileImageContainer}>
+            <Ionicons name="person-circle" size={80} color="#666" />
           </View>
-        </TouchableOpacity>
-        <Text style={styles.username}>Vivish.V</Text>
-      </View>
-
-      {/* Stats Section */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
-          <Text style={styles.statTitle}>TOTAL ORDERS</Text>
-          <Text style={styles.statValue}>120</Text>
+          <View style={styles.userDetails}>
+            <Text style={styles.userName}>
+              {userProfile?.displayName || 'User'}
+            </Text>
+            <Text style={styles.userEmail}>{userProfile?.email}</Text>
+            <Text style={styles.memberSince}>
+              Member since: {formatDate(userProfile?.createdAt)}
+            </Text>
+            {userLocation && (
+              <Text style={styles.userLocation}>
+                <Ionicons name="location" size={16} color="#666" /> {userLocation}
+              </Text>
+            )}
+          </View>
         </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statTitle}>ZAPP POINTS</Text>
-          <Text style={styles.statValue}>430</Text>
+
+        {/* Stats Section */}
+        <View style={styles.statsSection}>
+          <View style={styles.statCard}>
+            <Ionicons name="cart" size={24} color="#FFA500" style={styles.statIcon} />
+            <Text style={styles.statTitle}>Orders</Text>
+            <Text style={styles.statValue}>{orderCount}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="gift" size={24} color="#FFA500" style={styles.statIcon} />
+            <Text style={styles.statTitle}>ZAPP Points</Text>
+            <Text style={styles.comingSoonText}>Coming Soon</Text>
+          </View>
         </View>
-      </View>
 
-      {/* Zapper Toggle */}
-      <View style={styles.zapperContainer}>
-        <Text style={styles.zapperText}>ZAPPER</Text>
-        <Link href="/OrderDashboard">
-          <Text style={styles.zapperAction}>SWIPE TO ENABLE ➡️</Text>
-        </Link>
-      </View>
+        {/* Action Section */}
+        <View style={styles.actionContainer}>
+          <Text style={styles.actionText}>ZAPPER</Text>
+          <Link href="/OrderDashboard">
+            <View style={styles.actionButton}>
+              <Text style={styles.buttonText}>Activate Now</Text>
+            </View>
+          </Link>
+        </View>
 
-      {/* Menu Options */}
-      <View style={styles.menu}>
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuText}>PRIVACY TERMS AND POLICY</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuText}>ZAPP POINTS</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.menuItem}>
-          <Text style={styles.menuText}>PAYMENTS AND REFUNDS</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Menu Section */}
+        <View style={styles.menu}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/Instruction')}>
+            <Ionicons name="help-circle" size={24} color="#000" />
+            <Text style={styles.menuText}>How to Use</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/OrderHistory')}>
+            <Ionicons name="time" size={24} color="#000" />
+            <Text style={styles.menuText}>Order History</Text>
+          </TouchableOpacity>
+          
+          
+          
+          <TouchableOpacity style={[styles.menuItem, styles.logoutItem]} onPress={handleLogout}>
+            <Ionicons name="log-out" size={24} color="#FF4444" />
+            <Text style={[styles.menuText, styles.logoutText]}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#000000', // Black background for the whole page
-    paddingTop: 30,
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    paddingTop: 20,
     paddingHorizontal: 20,
+  },
+  scrollContainer: {
+    marginBottom: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 20,
-    backgroundColor: '#FFFFFF', // White background for header
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    backgroundColor: '#000',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   title: {
-    color: '#000000', // Black text for the title
+    color: '#FFF',
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center', // Center aligns text within the space
-    flex: 1, // Makes it occupy available space
+    fontWeight: '700',
+    textAlign: 'center',
+    flex: 1,
   },
   close: {
-    color: '#000000', // Black color for close icon
-    fontSize: 28,
+    color: '#FFF',
+    fontSize: 32,
     fontWeight: 'bold',
-    paddingHorizontal: 10,
   },
-  profileInfo: {
+  // User Info Section
+  userInfoSection: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
     alignItems: 'center',
-    marginTop: 40,
   },
-  profilePicContainer: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    borderWidth: 4,
-    borderColor: '#FFFFFF', // White border for profile picture
-    overflow: 'hidden',
+  profileImageContainer: {
+    marginBottom: 15,
+  },
+  userDetails: {
+    alignItems: 'center',
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 5,
+  },
+  userEmail: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 5,
+  },
+  memberSince: {
+    fontSize: 14,
+    color: '#888',
+    marginBottom: 5,
+  },
+  userLocation: {
+    fontSize: 14,
+    color: '#666',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // Stats Section
+  statsSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+  },
+  statCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    width: '47%',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  profilePic: {
-    width: '100%',
-    height: '100%',
-  },
-  uploadOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Black overlay
-    width: '100%',
-    alignItems: 'center',
-    paddingVertical: 5,
-  },
-  uploadText: {
-    color: '#FFFFFF', // White text for upload
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  username: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 10,
-    color: '#FFFFFF', // White color for username
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 20,
-  },
-  statBox: {
-    backgroundColor: '#FFFFFF', // White background for stats
-    borderRadius: 10,
-    padding: 20,
-    alignItems: 'center',
-    width: '40%',
+  statIcon: {
+    marginBottom: 10,
   },
   statTitle: {
     fontSize: 16,
-    color: '#000000', // Black text for stat title
-    fontWeight: 'bold',
-    marginBottom: 10,
+    color: '#666',
+    fontWeight: '600',
+    marginBottom: 5,
   },
   statValue: {
-    fontSize: 20,
-    color: '#000000', // Black text for stat value
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000',
   },
-  zapperContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 30,
-    backgroundColor: '#FFFFFF', // White background for zapper section
-    padding: 15,
-    borderRadius: 10,
+  comingSoonText: {
+    fontSize: 14,
+    color: '#999',
+    fontWeight: '400',
+    marginTop: 6,
+    fontStyle: 'italic',
   },
-  zapperText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000000', // Black color for zapper text
-  },
-  zapperAction: {
-    fontSize: 16,
-    color: '#000000', // Black color for swipe action
-    fontWeight: 'bold',
-  },
-  menu: {
-    marginTop: 30,
+  // Action Section
+  actionContainer: {
+    backgroundColor: '#FFF',
+    paddingVertical: 30,
     paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  actionText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#666',
+    marginBottom: 12,
+  },
+  actionButton: {
+    backgroundColor: '#000',
+    paddingVertical: 14,
+    paddingHorizontal: 48,
+    borderRadius: 30,
+    elevation: 2,
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  // Menu Section
+  menu: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E4EC',
-    paddingVertical: 15,
+    borderBottomColor: '#f0f0f0',
   },
   menuText: {
     fontSize: 16,
-    color: '#FFFFFF', // White text for menu items
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#000',
+    marginLeft: 15,
+  },
+  logoutItem: {
+    borderBottomWidth: 0,
+  },
+  logoutText: {
+    color: '#FF4444',
+  },
+  // Loading and Unauthenticated States
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 50,
+  },
+  loadingText: {
+    marginTop: 20,
+    fontSize: 16,
+    color: '#666',
+  },
+  unauthenticatedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 50,
+  },
+  unauthenticatedText: {
+    fontSize: 18,
+    color: '#666',
+    marginTop: 20,
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  loginButton: {
+    backgroundColor: '#000',
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+  },
+  loginButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
 

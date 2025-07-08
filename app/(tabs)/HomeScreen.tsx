@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -8,18 +8,17 @@ import {
   TouchableOpacity,
   TextInput,
   FlatList,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import Navbar from '@/components/Navbar';
-import BiryaniCardScreen from '@/components/Biryanicard';
 import CCard from "@/components/CCard";
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import FloatingMenu from '@/components/FloatingMenu';
-import { collection, getDocs, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
-import { db, auth } from '../../firebase/Config';
-import {NotificationBadge} from './NotificationBadge';
-import { NotificationsList } from '@/components/NotificationsList';
-
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase/Config';
+import { NotificationBadge } from './NotificationBadge';
 
 const { width, height } = Dimensions.get('window');
 
@@ -41,7 +40,6 @@ interface Notification {
   acceptedAt: Date;
 }
 
-
 export default function HomeScreen() {
   const [category, setCategory] = useState('');
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -51,27 +49,29 @@ export default function HomeScreen() {
   const [searchResults, setSearchResults] = useState<Restaurant[]>([]);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchRestaurants = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'restaurantsData'));
-        const restaurantList = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          name: doc.data().name,
-          address: doc.data().address,
-        }));
-        setRestaurants(restaurantList);
-        setFilteredRestaurants(restaurantList);
-      } catch (error) {
-        console.error('Error fetching restaurants:', error);
-      }
-    };
-
-    fetchRestaurants();
+  // Fetch restaurants - optimized with useCallback to prevent unnecessary re-renders
+  const fetchRestaurants = useCallback(async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'restaurantsData'));
+      const restaurantList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name || '',
+        address: doc.data().address || '',
+      }));
+      setRestaurants(restaurantList);
+      setFilteredRestaurants(restaurantList);
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+    }
   }, []);
 
   useEffect(() => {
-    let filtered = restaurants;
+    fetchRestaurants();
+  }, [fetchRestaurants]);
+
+  // Apply filters - memoized to prevent unnecessary re-renders
+  useEffect(() => {
+    let filtered = [...restaurants];
 
     if (category) {
       filtered = filtered.filter(restaurant => restaurant.address === category);
@@ -100,17 +100,21 @@ export default function HomeScreen() {
   const handleMenuToggle = () => {
     setIsMenuOpen((prevState) => !prevState);
   };
+  const handleSearchTextChange = (text: string) => {
+    setSearchText(text);
+  };
 
   const customCardStyles = {
     cardContainer: {
-      width: width * 0.9,
+      width: width - 20, // Full width minus minimal padding
       height: 120,
       backgroundColor: '#000000',
       borderRadius: 10,
-      marginVertical: 10,
+      marginVertical: 8,
       padding: 15,
       flexDirection: 'row',
       alignItems: 'center',
+      marginHorizontal: 0, // Remove horizontal margins
     },
     textContainer: {
       flex: 1,
@@ -128,53 +132,38 @@ export default function HomeScreen() {
     },
   };
 
-  // const MenuButton = () => (
-  //   <TouchableOpacity style={styles.menuButton} onPress={handleMenuToggle}>
-  //     <NotificationBadge />
-  //     <Text style={styles.menuText}>☰</Text>
-  //   </TouchableOpacity>
-  // );
+  // Memoize restaurant rendering to optimize performance
+  const renderRestaurant = useCallback((restaurant: Restaurant) => {
+    return (
+      <TouchableOpacity
+        style={styles.cardWrapper}
+        key={restaurant.id}
+        onPress={() => handleCardPress(restaurant)}
+      >
+        <CCard customStyles={customCardStyles} restaurant={restaurant} index={parseInt(restaurant.id, 10) || 0} />
+      </TouchableOpacity>
+    );
+  }, [customCardStyles]);
 
   return (
     <View style={styles.container}>
-      <Navbar />
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* <NotificationsList /> */}
+      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
+      
+      {/* Main Content with Scrollable Navbar */}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Navbar Component - Now scrollable */}
+        <Navbar 
+          searchText={searchText}
+          onSearchTextChange={handleSearchTextChange}
+          searchResults={searchResults}
+          onRestaurantPress={handleCardPress}
+        />
         
-        <View style={styles.searchBarContainer}>
-          <TextInput
-            placeholder="Search for restaurants"
-            placeholderTextColor="#aaa"
-            style={styles.searchBar}
-            value={searchText}
-            onChangeText={(text) => setSearchText(text)}
-          />
-          {searchResults.length > 0 && (
-            <FlatList
-              data={searchResults}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.searchResult}
-                  onPress={() => handleCardPress(item)}
-                >
-                  <Text style={styles.searchResultText}>{item.name}</Text>
-                </TouchableOpacity>
-              )}
-              style={styles.searchResultsContainer}
-            />
-          )}
-        </View>
-
-        <Text style={styles.heading}>Popular foods!</Text>
-
-        <View style={styles.cardWrapper}>
-          <TouchableOpacity onPress={() => handleCardPress({ id: 'popular', name: "Classic Biryani", address: "Java Green" })}>
-            <CCard customStyles={customCardStyles} restaurant={{ name: "Classic Biryani", address: "Java Green" }} />
-          </TouchableOpacity>
-        </View>
-
-        <BiryaniCardScreen />
+        <Text style={styles.heading}>Crave It. Tap It. Get It !</Text>
 
         <View style={styles.dropdownContainer}>
           <Text style={styles.dropdownLabel}>Choose Location</Text>
@@ -192,29 +181,28 @@ export default function HomeScreen() {
         <Text style={styles.heading}>Hotel List</Text>
 
         {filteredRestaurants.length > 0 ? (
-          filteredRestaurants.map((restaurant) => (
+          filteredRestaurants.map((restaurant, index) => (
             <TouchableOpacity
               style={styles.cardWrapper}
               key={restaurant.id}
               onPress={() => handleCardPress(restaurant)}
             >
-              <CCard customStyles={customCardStyles} restaurant={restaurant} />
+              <CCard customStyles={customCardStyles} restaurant={restaurant} index={index} />
             </TouchableOpacity>
           ))
         ) : (
           <Text style={styles.noResults}>No restaurants found in this location.</Text>
         )}
+        
+        {/* Bottom padding for floating menu */}
+        <View style={styles.bottomPadding} />
       </ScrollView>
 
-      {isMenuOpen && (
-        <FloatingMenu
-          onProfilePress={handleProfilePress}
-        />
-      )}
- <TouchableOpacity style={styles.menuButton} onPress={handleMenuToggle}>
-        <NotificationBadge />
-        <Text style={styles.menuText}>☰</Text>
-      </TouchableOpacity>
+      {/* Floating Menu */}
+      <FloatingMenu
+        onProfilePress={handleProfilePress}
+        visible={true}
+      />
     </View>
   );
 }
@@ -222,22 +210,26 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#FFFFFF',
+  },
+  scrollView: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   scrollContainer: {
-    paddingTop: 20,
-    paddingHorizontal: 10,
+    paddingHorizontal: 0, // Remove all horizontal padding
+    paddingBottom: 100, // Bottom padding for floating menu
   },
   heading: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginVertical: 10,
-    marginLeft: 20,
-    color: '#333',
+    marginVertical: 15,
+    marginHorizontal: 20, // Keep some margin for readability
+    color: '#000',
   },
   searchBarContainer: {
-    marginHorizontal: 20,
-    marginBottom: 20,
+    marginHorizontal: 10,
+    marginBottom: 15,
   },
   searchBar: {
     backgroundColor: '#fff',
@@ -265,22 +257,40 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   dropdownContainer: {
-    marginHorizontal: 20,
-    marginVertical: 10,
+    marginHorizontal: 20, // Keep some margin for the dropdown
+    marginVertical: 15,
   },
   dropdown: {
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    height: 50,
+    backgroundColor: '#FF6B6B',
+    borderRadius: 16,
+    height: 56,
+    borderWidth: 1,
+    borderColor: '#000',
+    color: '#000',
+    paddingHorizontal: 16,
+    fontSize: 16,
+    fontWeight: '500',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
   dropdownLabel: {
     fontSize: 16,
-    color: '#333',
-    marginBottom: 5,
+    color: '#000', // Changed from white to black for better visibility
+    marginBottom: 8,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   cardWrapper: {
-    marginVertical: 10,
+    marginVertical: 5,
     alignItems: 'center',
+    paddingHorizontal: 0, // Remove all horizontal padding
+    width: '100%', // Ensure full width
   },
   menuButton: {
     position: 'absolute',
@@ -300,6 +310,10 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
     marginTop: 20,
+    marginHorizontal: 10,
+  },
+  bottomPadding: {
+    height: 20, // Extra padding at bottom
   },
   badge: {
     position: 'absolute',
@@ -319,7 +333,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   notificationsContainer: {
-    margin: 20,
+    margin: 10,
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,

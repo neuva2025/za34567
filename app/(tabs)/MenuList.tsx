@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/Config';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,7 +22,7 @@ const MenuList = () => {
   const [menuExists, setMenuExists] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   
-  const { restaurantId,name } = useLocalSearchParams();
+  const { restaurantId, name } = useLocalSearchParams();
   const router = useRouter();
   const { cartItems, addToCart: addItemToCart } = useCart();
 
@@ -78,12 +78,12 @@ const MenuList = () => {
     };
     
     addItemToCart(cartItem);
-    Alert.alert('Added to Cart', `${item.itemName} added to your cart`);
+    // Alert.alert removed from here
   };
 
   const proceedToSummary = () => {
     if (cartItems.length === 0) {
-      Alert.alert('Empty Cart', 'Please add items to your cart first');
+      // Alert.alert removed from here
       return;
     }
 
@@ -97,6 +97,10 @@ const MenuList = () => {
     });
   };
 
+  const navigateToHome = () => {
+    router.push('/HomeScreen');
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -108,6 +112,14 @@ const MenuList = () => {
   return (
     
     <View style={styles.container}>
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={navigateToHome}
+      >
+        <Ionicons name="arrow-back" size={24} color="#333" />
+      </TouchableOpacity>
+
       {/* Cart Icon */}
       <TouchableOpacity 
         style={styles.cartIcon} 
@@ -226,6 +238,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2E8B57',
     fontStyle: 'italic',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 1,
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   cartIcon: {
     position: 'absolute',

@@ -35,8 +35,8 @@ const SearchBar = ({ value, onChange }: { value: string; onChange: (event: React
     </SearchIconWrapper>
     <StyledInputBase
       placeholder="Search…"
-      value={value} // Bind to searchQuery state in HomeScreen
-      onChange={onChange} // Update searchQuery dynamically
+      value={value} 
+      onChange={onChange} 
       inputProps={{ 'aria-label': 'search' }}
     />
   </div>

@@ -41,7 +41,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
         createdAt: doc.data().acceptedAt?.toDate() || new Date(),
       })) as Notification[];
 
-      // Sort notifications by date, newest first
+     
       newNotifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       setNotifications(newNotifications);
       setUnreadCount(newNotifications.filter(n => !n.read).length);

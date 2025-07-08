@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Button, StyleSheet, Alert, TouchableOpacity, ScrollView } from "react-native";
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  StyleSheet, 
+  Alert, 
+  TouchableOpacity, 
+  ScrollView, 
+  KeyboardAvoidingView,
+  Platform
+} from "react-native";
 import { auth, db } from "../../firebase/Config";
 import { 
   createUserWithEmailAndPassword, 
@@ -87,118 +97,170 @@ const App = () => {
     }
   };
 
-  const LoginScreen = () => (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Login</Text>
-      <TextInput
-        value={email}
-        onChangeText={setEmail}
-        placeholder="Enter Email"
-        keyboardType="email-address"
-        style={styles.input}
-      />
-      <TextInput
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Enter Password"
-        secureTextEntry
-        style={styles.input}
-      />
-      <Button title="Login" onPress={handleLogin} />
-      <TouchableOpacity onPress={() => setCurrentPage("signUp")}>
-        <Text style={styles.redirectText}>Don't have an account? Sign Up</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => setCurrentPage("passwordReset")}>
-        <Text style={styles.redirectText}>Forgot Password?</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
-
-  const SignUpScreen = () => (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Create Account</Text>
-      <TextInput
-        value={name}
-        onChangeText={setName}
-        placeholder="Enter Name"
-        style={styles.input}
-      />
-      <TextInput
-        value={email}
-        onChangeText={setEmail}
-        placeholder="Enter Email"
-        keyboardType="email-address"
-        style={styles.input}
-      />
-      <TextInput
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Enter Password"
-        secureTextEntry
-        style={styles.input}
-      />
-      <TextInput
-        value={regNo}
-        onChangeText={setRegNo}
-        placeholder="Enter Registration Number"
-        style={styles.input}
-      />
-      <TextInput
-        value={phoneNo}
-        onChangeText={setPhoneNo}
-        placeholder="Enter Phone Number"
-        style={styles.input}
-        keyboardType="phone-pad"
-      />
-      <TextInput
-        value={srmEmail}
-        onChangeText={setSrmEmail}
-        placeholder="Enter SRM Email"
-        style={styles.input}
-      />
-      <Button title="Sign Up" onPress={handleSignUp} />
-      <TouchableOpacity onPress={() => setCurrentPage("login")}>
-        <Text style={styles.redirectText}>Already have an account? Login</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
-
-  const VerifyEmailScreen = () => (
-    <View style={styles.container}>
-      <Text style={styles.header}>Please Verify Your Email</Text>
-      <Text style={styles.text}>
-        A verification email has been sent to your email address. 
-        Please check your inbox to verify your account.
-      </Text>
-      <TouchableOpacity onPress={() => setCurrentPage("login")}>
-        <Text style={styles.redirectText}>Go to Login</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const PasswordResetScreen = () => (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Reset Password</Text>
-      <TextInput
-        value={email}
-        onChangeText={setEmail}
-        placeholder="Enter Email"
-        keyboardType="email-address"
-        style={styles.input}
-      />
-      <Button title="Send Password Reset Email" onPress={handlePasswordReset} />
-      <TouchableOpacity onPress={() => setCurrentPage("login")}>
-        <Text style={styles.redirectText}>Back to Login</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
+  const renderContent = () => {
+    switch(currentPage) {
+      case "login":
+        return (
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ width: "100%" }}
+          >
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
+              <Text style={styles.header}>Login</Text>
+              <View style={styles.formContainer}>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter Email"
+                  keyboardType="email-address"
+                  style={styles.input}
+                  autoCapitalize="none"
+                />
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter Password"
+                  secureTextEntry
+                  style={styles.input}
+                />
+                <TouchableOpacity 
+                  style={styles.button} 
+                  onPress={handleLogin}
+                >
+                  <Text style={styles.buttonText}>Login</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setCurrentPage("signUp")}>
+                  <Text style={styles.redirectText}>Don't have an account? Sign Up</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setCurrentPage("passwordReset")}>
+                  <Text style={styles.redirectText}>Forgot Password?</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        );
+      
+      case "signUp":
+        return (
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ width: "100%" }}
+          >
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
+              <Text style={styles.header}>Create Account</Text>
+              <View style={styles.formContainer}>
+                <TextInput
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Enter Name"
+                  style={styles.input}
+                />
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter Email"
+                  keyboardType="email-address"
+                  style={styles.input}
+                  autoCapitalize="none"
+                />
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter Password"
+                  secureTextEntry
+                  style={styles.input}
+                />
+                <TextInput
+                  value={regNo}
+                  onChangeText={setRegNo}
+                  placeholder="Enter Registration Number"
+                  style={styles.input}
+                />
+                <TextInput
+                  value={phoneNo}
+                  onChangeText={setPhoneNo}
+                  placeholder="Enter Phone Number"
+                  style={styles.input}
+                  keyboardType="phone-pad"
+                />
+                <TextInput
+                  value={srmEmail}
+                  onChangeText={setSrmEmail}
+                  placeholder="Enter SRM Email"
+                  style={styles.input}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+                <TouchableOpacity 
+                  style={styles.button} 
+                  onPress={handleSignUp}
+                >
+                  <Text style={styles.buttonText}>Sign Up</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setCurrentPage("login")}>
+                  <Text style={styles.redirectText}>Already have an account? Login</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        );
+      
+      case "verifyEmail":
+        return (
+          <View style={styles.container}>
+            <Text style={styles.header}>Please Verify Your Email</Text>
+            <Text style={styles.text}>
+              A verification email has been sent to your email address. 
+              Please check your inbox to verify your account.
+            </Text>
+            <TouchableOpacity 
+              style={styles.button} 
+              onPress={() => setCurrentPage("login")}
+            >
+              <Text style={styles.buttonText}>Go to Login</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      
+      case "passwordReset":
+        return (
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ width: "100%" }}
+          >
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
+              <Text style={styles.header}>Reset Password</Text>
+              <View style={styles.formContainer}>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter Email"
+                  keyboardType="email-address"
+                  style={styles.input}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity 
+                  style={styles.button} 
+                  onPress={handlePasswordReset}
+                >
+                  <Text style={styles.buttonText}>Send Password Reset Email</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setCurrentPage("login")}>
+                  <Text style={styles.redirectText}>Back to Login</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        );
+      
+      default:
+        return <View />;
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {currentPage === "login" && <LoginScreen />}
-      {currentPage === "signUp" && <SignUpScreen />}
-      {currentPage === "verifyEmail" && <VerifyEmailScreen />}
-      {currentPage === "passwordReset" && <PasswordResetScreen />}
+      {renderContent()}
     </View>
   );
 };
@@ -209,35 +271,64 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#F8F8F8",
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  input: {
-    backgroundColor: "#fff",
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 8,
-    fontSize: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    backgroundColor: "#FFFFFF",
     width: "100%",
   },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+    paddingVertical: 40
+  },
+  formContainer: {
+    width: "100%",
+    maxWidth: 400,
+  },
+  header: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 30,
+    textAlign: "center",
+    color: "#000000",
+  },
+  input: {
+    backgroundColor: "#F8F8F8",
+    padding: 15,
+    marginBottom: 15,
+    borderRadius: 10,
+    fontSize: 16,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  button: {
+    backgroundColor: "#000000",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+    marginBottom: 15,
+    width: "100%",
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
   redirectText: {
-    color: "#007bff",
+    color: "#000000",
     textAlign: "center",
     marginTop: 15,
     textDecorationLine: "underline",
+    fontSize: 16,
   },
   text: {
     fontSize: 16,
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 30,
+    color: "#333333",
+    lineHeight: 24,
   },
 });
 

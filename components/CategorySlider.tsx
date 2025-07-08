@@ -1,67 +1,69 @@
 import React, { useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 
 const CategorySlider: React.FC = () => {
   const categories = ["UB", "JAVA", "TP"];
   const [selectedCategory, setSelectedCategory] = useState<string>("");
 
-  const handleCategoryChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedCategory(event.target.value);
+  const handleCategoryChange = (value: string) => {
+    setSelectedCategory(value);
   };
 
   return (
-    <div
-      style={{
-        marginTop: '16px', // Add margin-top for spacing from elements above
-        marginBottom: '16px', // Add margin-bottom for spacing from elements below
-      }}
-    >
-      <label
-        htmlFor="category-select"
-        style={{
-          marginRight: '8px',
-          fontSize: '16px',
-          color: '#fff', // Changed to white
-        }}
-      >
-        Select a Category:
-      </label>
-      <select
-        id="category-select"
-        value={selectedCategory}
-        onChange={handleCategoryChange}
-        style={{
-          padding: '8px',
-          fontSize: '14px',
-          borderRadius: '5px',
-          border: '1px solid #ccc',
-          outline: 'none',
-          backgroundColor: '#fff',
-          color: '#000',
-        }}
-      >
-        <option value="" disabled>
-          -- Choose an option --
-        </option>
-        {categories.map((category, index) => (
-          <option key={index} value={category}>
-            {category}
-          </option>
-        ))}
-      </select>
+    <View style={styles.container}>
+      <Text style={styles.label}>Select a Category:</Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={selectedCategory}
+          onValueChange={handleCategoryChange}
+          style={styles.picker}
+        >
+          <Picker.Item label="-- Choose an option --" value="" />
+          {categories.map((category, index) => (
+            <Picker.Item key={index} label={category} value={category} />
+          ))}
+        </Picker>
+      </View>
 
       {selectedCategory && (
-        <p
-          style={{
-            marginTop: '10px',
-            fontSize: '14px',
-            color: '#112b38',
-          }}
-        >
-          You selected: <strong>{selectedCategory}</strong>
-        </p>
+        <Text style={styles.selectedCategory}>
+          You selected: <Text style={styles.selectedCategoryValue}>{selectedCategory}</Text>
+        </Text>
       )}
-    </div>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  label: {
+    marginRight: 8,
+    fontSize: 16,
+    color: '#fff',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    backgroundColor: '#fff',
+  },
+  picker: {
+    padding: 8,
+    fontSize: 14,
+    color: '#000',
+  },
+  selectedCategory: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#112b38',
+  },
+  selectedCategoryValue: {
+    fontWeight: 'bold',
+  },
+});
 
 export default CategorySlider;

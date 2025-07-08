@@ -2,18 +2,19 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: "zappp",
-    slug: "zappp",
+    name: "zapp",
+    slug: "zapp",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
-    scheme: "myapp",  // This is your app's URL scheme
+    icon: "./assets/images/zapp.png",
+    scheme: "myapp",  // This is your app's URLß scheme
     userInterfaceStyle: "automatic",
-    newArchEnabled: true,
+    newArchEnabled: false,
     ios: {
       supportsTablet: true,
     },
     android: {
+      package: "com.neuva.zappp",
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#ffffff",
@@ -27,6 +28,7 @@ export default {
         "https://checkout.razorpay.com/v1/checkout.js"
       ]
     },
+
     plugins: [
       "expo-router",
       [
@@ -48,8 +50,12 @@ export default {
       FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
       FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
       FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
-      razorpayKeyId: "",  // Replace with your Razorpay test key
-      appUrl: ""  // Using your existing scheme
+      eas: {
+        projectId: "1e8cfaeb-c63c-453b-b4c2-7cfe6acf6129"
+      }
     },
-  },
+    buildConfig: {
+      IS_NEW_ARCHITECTURE_ENABLED: false
+    }
+  }
 };
