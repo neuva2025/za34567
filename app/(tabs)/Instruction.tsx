@@ -6,7 +6,32 @@ import { Ionicons } from '@expo/vector-icons';
 const Instruction = () => {
   const router = useRouter();
 
-  const sections = [
+  type IoniconName =
+    | "filter"
+    | "infinite"
+    | "text"
+    | "rocket"
+    | "restaurant"
+    | "bicycle"
+    | "gift"
+    | "card"
+    | "location"
+    | "help-circle"
+    | "shield-checkmark"
+    | "key"
+    | "push"
+    | "map"
+    | "at"
+    | "search"
+    | string; // fallback for other possible names
+
+  interface Section {
+    title: string;
+    icon: IoniconName;
+    items: string[];
+  }
+
+  const sections: Section[] = [
     {
       title: 'Getting Started',
       icon: 'rocket',
@@ -79,7 +104,6 @@ const Instruction = () => {
       icon: 'help-circle',
       items: [
         'In-app chat support available 24/7',
-        'Call support: 7305634497',
         'Email: zappentrega@gmail.com',
         'Report issues with orders instantly',
         'Get refunds for cancelled orders'
@@ -102,7 +126,7 @@ const Instruction = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.push('/ProfilePage')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.title}>How to Use ZAPP</Text>
@@ -142,8 +166,7 @@ const Instruction = () => {
           <Text style={styles.footerText}>
             Contact our support team at{'\n'}
             <Text style={styles.footerHighlight}>zappentrega@gmail.com</Text>
-            {'\n'}or call us at{'\n'}
-            <Text style={styles.footerHighlight}>7305634497</Text>
+            {'\n'}or visit our FAQ section in the app.
           </Text>
         </View>
       </ScrollView>

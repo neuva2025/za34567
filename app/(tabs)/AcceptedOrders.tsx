@@ -44,7 +44,7 @@ interface AcceptedOrder {
   restaurantName: string;
   acceptedAt: Date;
   read: boolean;
-  ordererName?: string;
+  
 }
 
 const AcceptedOrders: React.FC = () => {
@@ -496,9 +496,7 @@ const AcceptedOrders: React.FC = () => {
                 🍽️ {item.restaurantName || 'Unknown Restaurant'}
               </Text>
 
-              <Text style={styles.orderUser}>
-                👤 Ordered by: {item.userName || 'Unknown User'}
-              </Text>
+             
               
               <View style={styles.locationContainer}>
                 <Text style={styles.locationText}>

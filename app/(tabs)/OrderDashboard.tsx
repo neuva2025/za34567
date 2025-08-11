@@ -87,8 +87,11 @@ const OrderDashboard = () => {
       
       const querySnapshot = await getDocs(q);
       
+      // Get current user's UID
+      const currentUserId = auth.currentUser?.uid;
+
       // Filter out accepted orders in JavaScript rather than in the query
-      const ordersList = querySnapshot.docs
+     const ordersList = querySnapshot.docs
         .map((doc) => ({
           id: doc.id,
           items: doc.data().items || [],
@@ -100,7 +103,11 @@ const OrderDashboard = () => {
           userId: doc.data().userId,
           acceptedBy: doc.data().acceptedBy,
         }))
-        .filter(order => order.status !== 'accepted' && !order.acceptedBy);
+        .filter(order => 
+          order.status !== 'accepted' && 
+          !order.acceptedBy && 
+          order.userId !== currentUserId // Exclude current user's orders
+        );
       
       console.log(`Fetched ${ordersList.length} available orders`);
       setOrders(ordersList);

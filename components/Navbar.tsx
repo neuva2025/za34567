@@ -114,10 +114,7 @@ const FoodAppHeader = ({
   };
 
   const categories = [
-    { 
-      name: 'Pizza', 
-      image: '../assets/images/picc8.jpeg'
-    },
+    
     { 
       name: 'Salad', 
       image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&h=200&fit=crop&crop=center'
@@ -276,7 +273,7 @@ const FoodAppHeader = ({
               <View style={styles.promoImageContainer}>
                 <View style={styles.foodImagePlaceholder}>
                   <Image 
-                    source={{ uri: 'https://images.unsplash.com/photo-1563379091339-03246963d17a?w=300&h=300&fit=crop&crop=center' }}
+                    source={require('../assets/images/pic2.jpeg')}
                     style={styles.foodImage}
                     resizeMode="cover"
                   />

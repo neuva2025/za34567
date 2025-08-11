@@ -4,12 +4,28 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase/Config';
 
+type OrderType = {
+  id: string;
+  acceptedBy?: string;
+  zapperRegNo?: string;
+  zapperPhone?: string;
+  userId?: string;
+  restaurantName?: string;
+  location?: string;
+  orderDate?: any;
+  acceptedAt?: any;
+  deliveredAt?: any;
+  status?: string;
+  items?: { title: string; quantity: number; price: number }[];
+  total?: number;
+};
+
 const OrderDetails = () => {
   const router = useRouter();
   const { orderId } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
-  const [order, setOrder] = useState(null);
-  const [acceptedBy, setAcceptedBy] = useState(null);
+  const [order, setOrder] = useState<OrderType | null>(null);
+  const [acceptedBy, setAcceptedBy] = useState<any>(null);
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -20,7 +36,7 @@ const OrderDetails = () => {
         const orderDoc = await getDoc(doc(db, 'orders', orderId.toString()));
         
         if (orderDoc.exists()) {
-          const orderData = { id: orderDoc.id, ...orderDoc.data() };
+          const orderData = { id: orderDoc.id, ...(orderDoc.data() as Omit<OrderType, 'id'>) };
           setOrder(orderData);
           
           // If there's an acceptedBy field, fetch that user's info
@@ -42,13 +58,13 @@ const OrderDetails = () => {
     fetchOrderDetails();
   }, [orderId]);
 
-  const formatDate = (timestamp) => {
+  const formatDate = (timestamp: any) => {
     if (!timestamp) return '';
     const date = timestamp.toDate();
     return date.toLocaleString();
   };
 
-  const handleCallPress = (phoneNumber) => {
+  const handleCallPress = (phoneNumber: string) => {
     if (phoneNumber) {
       Linking.openURL(`tel:${phoneNumber}`);
     }
@@ -199,7 +215,7 @@ const OrderDetails = () => {
               {order.zapperPhone ? (
                 <TouchableOpacity 
                   style={styles.callButton} 
-                  onPress={() => handleCallPress(order.zapperPhone)}
+                  onPress={() => handleCallPress(order.zapperPhone!)}
                 >
                   <Text style={styles.callButtonText}>📞 Call Zapper: {order.zapperPhone}</Text>
                 </TouchableOpacity>
