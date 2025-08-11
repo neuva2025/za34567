@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../../firebase/Config';
 
 type OrderType = {
@@ -58,11 +58,37 @@ const OrderDetails = () => {
     fetchOrderDetails();
   }, [orderId]);
 
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return '';
-    const date = timestamp.toDate();
-    return date.toLocaleString();
-  };
+  const formatDate = (timestamp: Timestamp | null | undefined) => {
+  if (!timestamp) return '';
+  
+  try {
+    // Ensure we're working with a Firestore Timestamp
+    if (timestamp instanceof Timestamp) {
+      return timestamp.toDate().toLocaleString();
+    }
+    
+    // If somehow we get a different format, try to convert it
+    if (
+      typeof timestamp === 'object' &&
+      timestamp !== null &&
+      'seconds' in timestamp &&
+      'nanoseconds' in timestamp &&
+      typeof (timestamp as any).seconds === 'number' &&
+      typeof (timestamp as any).nanoseconds === 'number'
+    ) {
+      return new Timestamp(
+        (timestamp as { seconds: number; nanoseconds: number }).seconds,
+        (timestamp as { seconds: number; nanoseconds: number }).nanoseconds
+      ).toDate().toLocaleString();
+    }
+    
+    console.log('Invalid timestamp format:', timestamp);
+    return '';
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '';
+  }
+};
 
   const handleCallPress = (phoneNumber: string) => {
     if (phoneNumber) {
