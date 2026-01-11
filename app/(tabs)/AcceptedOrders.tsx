@@ -4,10 +4,8 @@ import {
   FlatList, 
   StyleSheet, 
   Text, 
-  TextInput,
   TouchableOpacity, 
   View,
-  Modal,
   ActivityIndicator
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
@@ -51,10 +49,6 @@ const AcceptedOrders: React.FC = () => {
   const { selectedOrders } = useLocalSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [acceptedOrders, setAcceptedOrders] = useState<AcceptedOrder[]>([]);
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
-  const [phoneNumber, setPhoneNumber] = useState<string>('');
-  const [zapperRegNo, setZapperRegNo] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
   const navigation = useNavigation();
@@ -190,32 +184,10 @@ const AcceptedOrders: React.FC = () => {
     fetchOrders();
   }, [fetchOrders]);
 
-  const openAcceptModal = (order: Order): void => {
+  const handleAcceptOrder = async (order: Order): Promise<void> => {
     if (!order || !order.id) {
-      console.error("Tried to open modal with invalid order:", order);
+      console.error("Cannot accept order: Invalid order", order);
       Alert.alert('Error', 'Invalid order data. Please try again.');
-      return;
-    }
-    
-    console.log("Opening modal for order:", order.id);
-    console.log("Order to accept:", JSON.stringify(order, null, 2)); // Log the order object
-    setCurrentOrder(order);
-    setPhoneNumber('');
-    setZapperRegNo('');
-    setModalVisible(true);
-  };
-
-  const handleAcceptOrder = async (): Promise<void> => {
-    // Validate input fields
-    if (!phoneNumber || !zapperRegNo) {
-      Alert.alert('Error', 'Please enter both phone number and zapper registration number.');
-      return;
-    }
-
-    if (!currentOrder || !currentOrder.id) {
-      console.error("Cannot accept order: Invalid currentOrder", currentOrder);
-      Alert.alert('Error', 'Invalid order data. Please try again.');
-      setModalVisible(false);
       return;
     }
 
@@ -223,26 +195,51 @@ const AcceptedOrders: React.FC = () => {
     try {
       if (!auth.currentUser) {
         Alert.alert('Error', 'You must be logged in to accept orders.');
-        setModalVisible(false);
         setLoading(false);
         return;
       }
 
-      console.log("Accepting order:", currentOrder.id);
+      console.log("Accepting order:", order.id);
       console.log("Current user ID:", auth.currentUser.uid);
       
-      // Log the full order for debugging
-      console.log("Order data:", JSON.stringify(currentOrder, null, 2));
+      // Fetch current user's (zapper's) details from USERS collection
+      let zapperPhoneNo = '';
+      let zapperRegNo = '';
+      
+      try {
+        // Try to get user data from USERS collection using uid
+        const usersRef = collection(db, 'USERS');
+        const userQuery = query(usersRef, where('uid', '==', auth.currentUser.uid));
+        const userSnapshot = await getDocs(userQuery);
+        
+        if (!userSnapshot.empty) {
+          const userData = userSnapshot.docs[0].data();
+          zapperPhoneNo = userData.phoneNo || '';
+          zapperRegNo = userData.regNo || '';
+          console.log("Found zapper details:", { zapperPhoneNo, zapperRegNo });
+        } else {
+          console.log("User not found in USERS collection, checking users collection");
+          // Fallback: try 'users' collection
+          const usersDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+          if (usersDoc.exists()) {
+            const userData = usersDoc.data();
+            zapperPhoneNo = userData.phoneNo || userData.phone || '';
+            zapperRegNo = userData.regNo || '';
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching zapper details:", error);
+      }
 
       // IMPORTANT FIX: If userId is missing, try to find it or use current user as fallback
-      let ordererUserId = currentOrder.userId;
+      let ordererUserId = order.userId;
       
       if (!ordererUserId) {
-        console.log("Order doesn't have userId, fetching from database:", currentOrder.id);
+        console.log("Order doesn't have userId, fetching from database:", order.id);
         
         try {
           // Try to get the full order from Firestore to see if it has userId
-          const orderDoc = await getDoc(doc(db, 'orders', currentOrder.id));
+          const orderDoc = await getDoc(doc(db, 'orders', order.id));
           if (orderDoc.exists() && orderDoc.data().userId) {
             ordererUserId = orderDoc.data().userId;
             console.log("Found userId in database:", ordererUserId);
@@ -254,19 +251,18 @@ const AcceptedOrders: React.FC = () => {
         } catch (error) {
           console.error("Error fetching order details:", error);
           Alert.alert('Error', 'Could not retrieve order information. Please try again.');
-          setModalVisible(false);
           setLoading(false);
           return;
         }
       }
 
       // Update the original order status
-      const orderRef = doc(db, 'orders', currentOrder.id);
+      const orderRef = doc(db, 'orders', order.id);
       await updateDoc(orderRef, {
         status: 'accepted',
         acceptedBy: auth.currentUser.uid,
         acceptedAt: new Date(),
-        zapperPhone: phoneNumber,
+        zapperPhone: zapperPhoneNo,
         zapperRegNo: zapperRegNo
       });
 
@@ -288,12 +284,12 @@ const AcceptedOrders: React.FC = () => {
         ordererId: ordererUserId, // Now we ensure this is always defined
         ordererName: ordererName,
         acceptedBy: auth.currentUser.uid,
-        orderId: currentOrder.id,
-        location: currentOrder.location || 'Unknown Location',
-        amount: currentOrder.total || 0,
-        restaurantName: currentOrder.restaurantName || 'Unknown Restaurant',
+        orderId: order.id,
+        location: order.location || 'Unknown Location',
+        amount: order.total || 0,
+        restaurantName: order.restaurantName || 'Unknown Restaurant',
         acceptedAt: new Date(),
-        zapperPhone: phoneNumber,
+        zapperPhone: zapperPhoneNo,
         zapperRegNo: zapperRegNo,
         read: false
       };
@@ -309,8 +305,8 @@ const AcceptedOrders: React.FC = () => {
         await addDoc(collection(db, 'notifications'), {
           userId: ordererUserId,
           type: 'ORDER_ACCEPTED',
-          message: `Your order from ${currentOrder.restaurantName || 'restaurant'} has been accepted`,
-          orderId: currentOrder.id,
+          message: `Your order from ${order.restaurantName || 'restaurant'} has been accepted`,
+          orderId: order.id,
           acceptedOrderId: acceptedOrderDoc.id,
           createdAt: new Date(),
           read: false
@@ -319,10 +315,10 @@ const AcceptedOrders: React.FC = () => {
 
       // Update local state with the correct status
       const updatedOrder = { 
-        ...currentOrder, 
+        ...order, 
         status: 'accepted', 
         acceptedBy: auth.currentUser.uid,
-        zapperPhone: phoneNumber,
+        zapperPhone: zapperPhoneNo,
         zapperRegNo: zapperRegNo,
         userId: ordererUserId // Update with the resolved userId
       };
@@ -330,7 +326,7 @@ const AcceptedOrders: React.FC = () => {
       // Update the orders array directly
       setOrders(prevOrders =>
         prevOrders.map(o => 
-          o.id === currentOrder.id ? updatedOrder : o
+          o.id === order.id ? updatedOrder : o
         )
       );
 
@@ -342,14 +338,11 @@ const AcceptedOrders: React.FC = () => {
         ]
       );
 
-      setModalVisible(false);
-      
       // Force a full refresh
       await fetchOrders();
     } catch (error) {
       console.error('Error accepting order:', error);
       Alert.alert('Error', 'Failed to accept order. Please try again.');
-      setModalVisible(false);
     } finally {
       setLoading(false);
     }
@@ -516,7 +509,7 @@ const AcceptedOrders: React.FC = () => {
               {(!item.status || item.status === 'pending') && (!item.acceptedBy) && (
                 <TouchableOpacity
                   style={styles.acceptButton}
-                  onPress={() => openAcceptModal(item)}
+                  onPress={() => handleAcceptOrder(item)}
                 >
                   <Text style={styles.acceptButtonText}>Accept Order</Text>
                 </TouchableOpacity>
@@ -567,58 +560,6 @@ const AcceptedOrders: React.FC = () => {
       ) : (
         <Text style={styles.emptyText}>No orders selected</Text>
       )}
-
-      {/* Modal for entering phone and zapper reg number */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Accept Order</Text>
-            <Text style={styles.modalSubtitle}>Please provide your details</Text>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your phone number"
-                keyboardType="phone-pad"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Zapper Registration Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your zapper registration number"
-                value={zapperRegNo}
-                onChangeText={setZapperRegNo}
-              />
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.confirmButton}
-                onPress={handleAcceptOrder}
-              >
-                <Text style={styles.confirmButtonText}>Confirm</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -796,85 +737,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#aaa',
     marginTop: 32,
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    width: '80%',
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
-    textAlign: 'center',
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 6,
-    padding: 12,
-    fontSize: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-    padding: 12,
-    borderRadius: 6,
-    flex: 1,
-    marginRight: 8,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontWeight: 'bold',
-  },
-  confirmButton: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 6,
-    flex: 1,
-    marginLeft: 8,
-    alignItems: 'center',
-  },
-  confirmButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
   },
 });
 

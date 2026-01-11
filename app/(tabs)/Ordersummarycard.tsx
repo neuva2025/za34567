@@ -321,7 +321,9 @@ const OrderSummarycard: React.FC = () => {
           <>
             {orderItems.map((item, index) => (
               <View key={item.id} style={styles.card}>
-                <Image source={{ uri: item.image }} style={styles.image} />
+                {item.image ? (
+                  <Image source={{ uri: item.image }} style={styles.image} />
+                ) : null}
                 <View style={styles.detailsContainer}>
                   <View style={styles.titleRow}>
                     <Text style={styles.title}>{item.title}</Text>
@@ -341,21 +343,7 @@ const OrderSummarycard: React.FC = () => {
                       <FontAwesome name="star" size={16} color="#f0c02f" />
                       <Text style={styles.rating}>{item.rating}</Text>
                     </View>
-                    <View style={styles.quantityContainer}>
-                      <TouchableOpacity 
-                        style={styles.quantityButton}
-                        onPress={() => handleQuantityChange(item.id, item.quantity - 1)}
-                      >
-                        <Ionicons name="remove" size={16} color="#333" />
-                      </TouchableOpacity>
-                      <Text style={styles.quantity}>{item.quantity}</Text>
-                      <TouchableOpacity 
-                        style={styles.quantityButton}
-                        onPress={() => handleQuantityChange(item.id, item.quantity + 1)}
-                      >
-                        <Ionicons name="add" size={16} color="#333" />
-                      </TouchableOpacity>
-                    </View>
+                    <Text style={styles.quantityText}>Qty: {item.quantity}</Text>
                     <Text style={styles.price}>
                       ₹{(item.price * item.quantity).toFixed(2)}
                     </Text>
@@ -575,6 +563,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     minWidth: 20,
     textAlign: 'center',
+  },
+  quantityText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
   },
   price: {
     fontSize: 16,
